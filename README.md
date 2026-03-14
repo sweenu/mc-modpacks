@@ -4,26 +4,37 @@ This repository lets you define reusable mod groups and compose multiple Modrint
 
 ## Layout
 
-- `modpacks.nix`: your source of truth for reusable groups and concrete modpack definitions.
+- `modpacks.nix`: maps group names to local packwiz project directories and defines composed modpacks.
+- `groups/<name>/`: standalone packwiz projects you can edit directly with `packwiz`.
 - `lib/mk-packwiz-modpack.nix`: turns one modpack definition into a complete packwiz tree (`pack.toml`, `index.toml`, and `mods/*.pw.toml`).
 - `flake.nix`: exposes each modpack as a build target under `packages.<system>.<name>`.
 
-## Define Groups And Packs
+## Edit Groups With packwiz
 
-Edit `modpacks.nix`.
+Each group is a normal packwiz project, so you can work in that folder and run packwiz commands directly.
 
-1. Add reusable mods and groups under `groups`.
-1. Define each concrete modpack under `modpacks` with metadata, selected groups, and `extraMods`.
+Example:
 
-Each mod entry needs enough metadata for packwiz to work without running network calls inside `nix build`:
+```bash
+cd groups/base
+packwiz modrinth add sodium
+```
 
-- `name`
-- `filename`
-- `download.url`
-- `download.hashFormat` (typically `sha512`)
-- `download.hash`
-- `update.modrinth.projectId`
-- `update.modrinth.versionId`
+## Compose Groups With Nix
+
+Edit `modpacks.nix`:
+
+1. `flake.nix` auto-discovers group directories under `./groups` and passes them to `modpacks.nix` as `groups`.
+1. Define each concrete modpack under `modpacks` by selecting group paths (for example `groups.base`, `groups.terrain`).
+1. Optionally add one-off `extraMods` inline.
+
+The merge is strict and fails early with explicit explanations if:
+
+- A selected group is missing `pack.toml` or referenced mod metafiles.
+- A group's Minecraft version differs from the modpack config.
+- A group's loader or loader version differs from the modpack config.
+- Two groups define the same mod identity with different version/hash/filename data.
+- Two different mods collide on the same JAR filename.
 
 ## Build A Specific Modpack
 

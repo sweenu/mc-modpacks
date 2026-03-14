@@ -18,11 +18,15 @@
       let
         pkgs = import nixpkgs { inherit system; };
         lib = pkgs.lib;
+        groupsRoot = ./groups;
+        groups = lib.mapAttrs (
+          groupName: _kind: "${groupsRoot}/${groupName}"
+        ) (lib.filterAttrs (_: kind: kind == "directory") (builtins.readDir groupsRoot));
 
-        config = import ./modpacks.nix { inherit lib; };
+        config = import ./modpacks.nix { inherit lib groups; };
         mkPackwizModpack = import ./lib/mk-packwiz-modpack.nix { inherit lib pkgs; };
 
-        modpackPackages = lib.mapAttrs (name: cfg: mkPackwizModpack name cfg config.groups) config.modpacks;
+        modpackPackages = lib.mapAttrs (name: cfg: mkPackwizModpack name cfg groups) config.modpacks;
 
         modrinthToNix = pkgs.writeShellApplication {
           name = "modrinth-to-nix";
