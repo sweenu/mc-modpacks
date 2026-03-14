@@ -1,0 +1,175 @@
+name: Build Modpack MRPacks
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-release:
+    name: Prepare Release Commit And Tag
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute release version
+        id: release
+        run: |
+          release_version=''
+          base_minute="$(( $(date -u +%s) / 60 ))"
+
+          for offset in $(seq 0 120); do
+            candidate_minute="$(( base_minute + offset ))"
+            candidate_version="$(date -u -d "@$(( candidate_minute * 60 ))" +'%y.%m.%d%H%M')"
+            candidate_tag="v${candidate_version}"
+
+            if ! git ls-remote --exit-code --tags origin "refs/tags/${candidate_tag}" >/dev/null 2>&1; then
+              release_version="$candidate_version"
+              break
+            fi
+          done
+
+          if [ -z "$release_version" ]; then
+            echo "Unable to find an available release version in the next 120 minutes." >&2
+            exit 1
+          fi
+
+          release_tag="v${release_version}"
+
+          echo "release_version=${release_version}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Update modpack versions
+        id: bump
+        run: |
+          RELEASE_VERSION='${{ steps.release.outputs.release_version }}' \
+            perl -0pi -e 's/^(\s*version\s*=\s*")[^"]+(";\s*)$/${1}$ENV{RELEASE_VERSION}${2}/mg' modpacks.nix
+
+          if git diff --quiet -- modpacks.nix; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push release version bump
+        if: steps.bump.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add modpacks.nix
+          git commit -m 'chore(release): ${{ steps.release.outputs.release_version }}'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Create and push release tag
+        if: steps.bump.outputs.changed == 'true'
+        run: |
+          release_tag='${{ steps.release.outputs.release_tag }}'
+
+          git tag "${release_tag}"
+          git push origin "${release_tag}"
+
+  discover-modpacks:
+    name: Discover Modpacks
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    outputs:
+      modpacks: ${{ steps.discover.outputs.modpacks }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Discover modpack package names
+        id: discover
+        run: |
+          read -r -d '' discover_expr <<'NIX' || true
+          pkgs: builtins.filter (name: let p = pkgs.${name}; in (p.type or "") == "derivation" && (builtins.match "modpack-.*" (p.name or "")) != null) (builtins.attrNames pkgs)
+          NIX
+
+          modpacks="$(nix eval --json .#packages.x86_64-linux --apply "$discover_expr")"
+
+          if [ "$(echo "$modpacks" | jq 'length')" -eq 0 ]; then
+            echo "No modpack packages discovered." >&2
+            exit 1
+          fi
+
+          echo "Discovered modpacks: $modpacks"
+          echo "modpacks=$modpacks" >> "$GITHUB_OUTPUT"
+
+  build-mrpack:
+    name: Build ${{ matrix.modpack }}.mrpack
+    runs-on: ubuntu-latest
+    needs: discover-modpacks
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        modpack: ${{ fromJson(needs.discover-modpacks.outputs.modpacks) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Build packwiz tree
+        id: build
+        run: |
+          out_path="$(nix build --print-out-paths .#${{ matrix.modpack }})"
+          echo "out_path=$out_path" >> "$GITHUB_OUTPUT"
+
+      - name: Export .mrpack
+        run: |
+          mkdir -p dist
+          tmp_dir="$(mktemp -d)"
+
+          cp -r "${{ steps.build.outputs.out_path }}" "$tmp_dir/${{ matrix.modpack }}"
+          chmod -R u+w "$tmp_dir/${{ matrix.modpack }}"
+
+          (
+            cd "$tmp_dir/${{ matrix.modpack }}"
+            nix shell nixpkgs#packwiz -c packwiz mr export -o "$GITHUB_WORKSPACE/dist/${{ matrix.modpack }}.mrpack"
+          )
+
+      - name: Upload .mrpack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrpack-${{ matrix.modpack }}
+          path: dist/${{ matrix.modpack }}.mrpack
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish Release Assets
+    runs-on: ubuntu-latest
+    needs: build-mrpack
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download .mrpack artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mrpack-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish tag release with .mrpack assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*.mrpack
