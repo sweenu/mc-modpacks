@@ -51,6 +51,18 @@ nix run .#modrinth-to-nix -- <version-id>
 
 It prints a Nix attrset snippet you can paste into `modpacks.nix`.
 
+Use the second helper to resolve the latest compatible version by project + game version + loader:
+
+```bash
+nix run .#modrinth-latest-to-nix -- <project-id-or-slug> <minecraft-version> <loader>
+```
+
+Example:
+
+```bash
+nix run .#modrinth-latest-to-nix -- sodium 1.20.1 fabric
+```
+
 ## Optional Dev Shell
 
 ```bash
