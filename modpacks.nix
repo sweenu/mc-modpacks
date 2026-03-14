@@ -1,40 +1,22 @@
 { lib, groups }:
 {
   modpacks = {
-    vanilla-plus = {
-      name = "Vanilla+";
+    creabblemon = {
+      name = "Creabblemon";
       author = "sweenu";
       version = "1.0.0";
 
-      minecraftVersion = "1.20.1";
-      loader = "fabric";
-      loaderVersion = "0.15.11";
+      minecraftVersion = "1.21.1";
+      loader = "neoforge";
+      loaderVersion = "21.1.219";
 
       groups = with groups; [
-        base
-        terrain
-      ];
-
-      extraMods = [
-        # Optional legacy inline entries still supported for one-off mods.
-      ];
-    };
-
-    create-plus = {
-      name = "Create+";
-      author = "sweenu";
-      version = "1.0.0";
-
-      minecraftVersion = "1.20.1";
-      loader = "fabric";
-      loaderVersion = "0.15.11";
-
-      groups = with groups; [
-        base
+        optimization
+        utilities
+        worldgen
+        decoration
         create
       ];
-
-      extraMods = [ ];
     };
   };
 }

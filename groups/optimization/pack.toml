@@ -1,4 +1,4 @@
-name = "Create"
+name = "Optimization"
 author = "sweenu"
 version = "1.0.0"
 pack-format = "packwiz:1.1.0"
@@ -6,7 +6,7 @@ pack-format = "packwiz:1.1.0"
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "23e9e286ddcd67df77ea79ef55c0a097c1e65f3da026bf57aa008d80944af193"
+hash = "2d320054b5377d96f52e768a8b6f3f94a1fad94c02af000612b84694a23d6188"
 
 [versions]
 minecraft = "1.21.1"

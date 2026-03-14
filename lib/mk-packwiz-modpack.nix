@@ -224,20 +224,46 @@ let
 
   selectedGroups = cfg.groups or [ ];
 
-  groupMods = builtins.concatLists (
+  flattenGroupDefs =
+    pathLabel: groupDef:
+    let
+      groupType = builtins.typeOf groupDef;
+    in
+    if groupType == "path" || groupType == "string" then
+      [
+        {
+          path = pathLabel;
+          value = groupDef;
+        }
+      ]
+    else if groupType == "list" then
+      builtins.concatLists (
+        lib.imap0 (
+          idx: nestedGroupDef: flattenGroupDefs "${pathLabel}.${toString (idx + 1)}" nestedGroupDef
+        ) groupDef
+      )
+    else
+      fail (
+        "`groups` entry `${pathLabel}` must be a path/string or nested list of paths; got `${groupType}` instead"
+      );
+
+  flattenedGroups = builtins.concatLists (
     lib.imap0 (
-      idx: groupDef:
-      let
-        groupType = builtins.typeOf groupDef;
-        groupLabel = "#${toString (idx + 1)} `${toString groupDef}`";
-      in
-      if groupType == "path" || groupType == "string" then
-        loadGroupFromPackwiz groupLabel groupDef
-      else
-        fail (
-          "`groups` entry ${groupLabel} must be a path to a packwiz project directory; got `${groupType}` instead"
-        )
+      idx: groupDef: flattenGroupDefs "#${toString (idx + 1)}" groupDef
     ) selectedGroups
+  );
+
+  resolvedGroupChecks = [
+    (require (builtins.length flattenedGroups > 0) "`groups` must resolve to at least one group path")
+  ];
+
+  groupMods = builtins.deepSeq resolvedGroupChecks (
+    builtins.concatLists (
+      map (
+        groupRef:
+        loadGroupFromPackwiz "${groupRef.path} `${toString groupRef.value}`" groupRef.value
+      ) flattenedGroups
+    )
   );
 
   extraMods = map validateAndNormalizeLegacyMod (cfg.extraMods or [ ]);

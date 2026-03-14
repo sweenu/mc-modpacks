@@ -1,0 +1,21 @@
+hash-format = "sha256"
+
+[[files]]
+file = "mods/cristel-lib.pw.toml"
+hash = "d10c6f194a20ef07b764bce9ef35bec526c5c5ff9acf84c53f9e172963869e56"
+metafile = true
+
+[[files]]
+file = "mods/tectonic.pw.toml"
+hash = "63aea16cbf3e00874a05889f1553f3ef4640b04d10c370bba78eb2377f4fbf07"
+metafile = true
+
+[[files]]
+file = "mods/terralith.pw.toml"
+hash = "da7ee99189ad35aac094919fe33cac647d98533b23c228f10d4811f08989e2b8"
+metafile = true
+
+[[files]]
+file = "mods/towns-and-towers.pw.toml"
+hash = "9bf9ab019562d204c452dd282b9a835632ffe88fdad6f20a88326da546614aaf"
+metafile = true

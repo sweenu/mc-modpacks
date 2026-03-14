@@ -1,1 +1,11 @@
 hash-format = "sha256"
+
+[[files]]
+file = "mods/cc-tweaked.pw.toml"
+hash = "0620370193cd76f48ebf81bd0d213cdc3adb5c640d8e39d5758d6f166c0c5036"
+metafile = true
+
+[[files]]
+file = "mods/create.pw.toml"
+hash = "9da22561c3a5e45beb91121518a49f2e8a62bedb332574ce43a9d9b287ebc705"
+metafile = true

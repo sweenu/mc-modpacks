@@ -26,6 +26,7 @@ Edit `modpacks.nix`:
 
 1. `flake.nix` auto-discovers group directories under `./groups` and passes them to `modpacks.nix` as `groups`.
 1. Define each concrete modpack under `modpacks` by selecting group paths (for example `groups.base`, `groups.terrain`).
+1. `groups` entries may be nested lists, so you can build reusable bundles (for example `let shared.base = [ groups.optimization groups.utility ]; in [ shared.base groups.create ]`).
 1. Optionally add one-off `extraMods` inline.
 
 The merge is strict and fails early with explicit explanations if:
