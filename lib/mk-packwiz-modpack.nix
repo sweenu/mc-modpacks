@@ -22,6 +22,8 @@ let
 
   getAttrOrNull = attrs: name: if builtins.hasAttr name attrs then builtins.getAttr name attrs else null;
 
+  defaultIfNull = value: default: if value == null then default else value;
+
   renderModSource = mod: mod.source or "unknown source";
 
   modIdentityKey = mod: if mod.projectId != null then "modrinth:${mod.projectId}" else "filename:${mod.filename}";
@@ -69,6 +71,7 @@ let
       filename = mod.filename;
       side = mod.side or "both";
       pwFile = mod.pwFile or null;
+      fileSize = mod.fileSize or null;
       download = {
         url = mod.download.url;
         hashFormat = mod.download.hashFormat;
@@ -201,6 +204,7 @@ let
             filename = modToml.filename;
             side = modToml.side or "both";
             pwFile = builtins.baseNameOf modRelativePath;
+            fileSize = modToml.download."file-size" or modToml.download.fileSize or null;
             download = {
               url = modToml.download.url;
               hashFormat = modToml.download."hash-format";
@@ -361,61 +365,72 @@ let
       }
     );
 
-  modEntries = map (
-    mod:
-    let
-      relativePath = "mods/${mkModFileName mod}";
-      content = if mod ? rawToml then mod.rawToml else mkModToml mod;
-    in
+  loaderDependencyKey =
     {
-      file = relativePath;
-      hash = builtins.hashString "sha256" content;
-      contentPath = pkgs.writeText "${lib.replaceStrings [ "/" ] [ "-" ] relativePath}" content;
+      fabric = "fabric-loader";
+      quilt = "quilt-loader";
+    }.${cfg.loader} or cfg.loader;
+
+  sideToEnv =
+    side:
+    if side == "client" then
+      {
+        client = "required";
+        server = "unsupported";
+      }
+    else if side == "server" then
+      {
+        client = "unsupported";
+        server = "required";
+      }
+    else
+      {
+        client = "required";
+        server = "required";
+      };
+
+  modrinthFiles = map (
+    mod:
+    {
+      path = "mods/${mod.filename}";
+      hashes = {
+        "${mod.download.hashFormat}" = mod.download.hash;
+      };
+      fileSize = defaultIfNull (mod.fileSize or null) 0;
+      env = sideToEnv (mod.side or "both");
+      downloads = [ mod.download.url ];
     }
   ) deduplicatedMods;
 
-  indexToml = renderToml "${modpackName}-index.toml" {
-    "hash-format" = "sha256";
-    files = map (entry: {
-      file = entry.file;
-      hash = entry.hash;
-      metafile = true;
-    }) modEntries;
-  };
-
-  indexHash = builtins.hashString "sha256" indexToml;
-
-  packToml = renderToml "${modpackName}-pack.toml" {
+  modrinthIndexJson = builtins.toJSON {
+    formatVersion = 1;
+    game = "minecraft";
+    versionId = cfg.version;
     name = cfg.name;
-    author = cfg.author or "";
-    version = cfg.version;
-    "pack-format" = "packwiz:1.1.0";
-
-    index = {
-      file = "index.toml";
-      "hash-format" = "sha256";
-      hash = indexHash;
-    };
-
-    versions = {
+    summary = cfg.summary or "";
+    files = modrinthFiles;
+    dependencies = {
       minecraft = cfg.minecraftVersion;
-    } // {
-      "${cfg.loader}" = cfg.loaderVersion;
+      "${loaderDependencyKey}" = cfg.loaderVersion;
     };
   };
 
-  packTomlPath = pkgs.writeText "${modpackName}-pack.toml" packToml;
-  indexTomlPath = pkgs.writeText "${modpackName}-index.toml" indexToml;
+  modrinthIndexPath = pkgs.writeText "${modpackName}-modrinth.index.json" modrinthIndexJson;
 in
-builtins.deepSeq requiredChecks (pkgs.runCommand "modpack-${modpackName}" { } (
+builtins.deepSeq requiredChecks (pkgs.runCommand "modpack-${modpackName}.mrpack" {
+  nativeBuildInputs = [ pkgs.zip ];
+} (
   builtins.deepSeq mergeConflictCheck
   ''
-    mkdir -p "$out/mods"
+    buildDir="$(mktemp -d)"
+    mkdir -p "$buildDir/overrides"
 
-    cp ${packTomlPath} "$out/pack.toml"
-    cp ${indexTomlPath} "$out/index.toml"
+    cp ${modrinthIndexPath} "$buildDir/modrinth.index.json"
+
+    # Keep archive metadata stable between builds.
+    touch -t 198001010000 "$buildDir/modrinth.index.json" "$buildDir/overrides"
+
+    cd "$buildDir"
+    zip -X -q -r "$out" modrinth.index.json overrides
   ''
-  + lib.concatMapStringsSep "\n" (entry: ''
-    cp ${entry.contentPath} "$out/${entry.file}"
-  '') modEntries
 ))

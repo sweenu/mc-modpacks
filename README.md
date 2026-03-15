@@ -6,7 +6,7 @@ This repository lets you define reusable mod groups and compose multiple Modrint
 
 - `modpacks.nix`: defines composed modpacks and selects groups from the auto-discovered `groups` attrset.
 - `groups/<loader>/<name>/`: standalone packwiz projects you can edit directly with `packwiz` (for example `groups/neoforge/worldgen`).
-- `lib/mk-packwiz-modpack.nix`: turns one modpack definition into a complete packwiz tree (`pack.toml`, `index.toml`, and `mods/*.pw.toml`).
+- `lib/mk-packwiz-modpack.nix`: turns one modpack definition into a Modrinth `.mrpack` by composing a packwiz tree and exporting it.
 - `flake.nix`: exposes each modpack as a build target under `packages.<system>.<name>`.
 
 ## Edit Groups With packwiz
@@ -43,7 +43,7 @@ The merge is strict and fails early with explicit explanations if:
 nix build .#vanilla-plus
 ```
 
-The output symlink (`./result`) contains a ready-to-use packwiz tree.
+The output symlink (`./result`) points to the generated `.mrpack` archive.
 
 ## Build All Modpacks
 
