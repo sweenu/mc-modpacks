@@ -1,0 +1,13 @@
+name = "Create"
+author = "sweenu"
+version = "1.0.0"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "0b0514861a96b0e0ea6125b74af897f48f1666d3f86a1a0f86e624f81cdd4187"
+
+[versions]
+fabric = "0.18.4"
+minecraft = "1.20.1"

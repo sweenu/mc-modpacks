@@ -1,0 +1,13 @@
+name = "Utilities"
+author = "sweenu"
+version = "1.0.0"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "883f60190909135c7f9742ba8d24224c10e37781a1e40ec6bc805c13562870cd"
+
+[versions]
+fabric = "0.18.4"
+minecraft = "1.20.1"

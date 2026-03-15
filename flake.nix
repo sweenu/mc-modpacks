@@ -19,9 +19,22 @@
         pkgs = import nixpkgs { inherit system; };
         lib = pkgs.lib;
         groupsRoot = ./groups;
-        groups = lib.mapAttrs (
-          groupName: _kind: "${groupsRoot}/${groupName}"
-        ) (lib.filterAttrs (_: kind: kind == "directory") (builtins.readDir groupsRoot));
+        discoverGroups =
+          root:
+          let
+            dirs = lib.filterAttrs (_: kind: kind == "directory") (builtins.readDir root);
+
+            discovered = lib.mapAttrs (
+              name: _kind:
+              let
+                path = root + "/${name}";
+              in
+              if builtins.pathExists (path + "/pack.toml") then path else discoverGroups path
+            ) dirs;
+          in
+          lib.filterAttrs (_: value: !(builtins.isAttrs value && value == { })) discovered;
+
+        groups = discoverGroups groupsRoot;
 
         config = import ./modpacks.nix { inherit lib groups; };
         mkPackwizModpack = import ./lib/mk-packwiz-modpack.nix { inherit lib pkgs; };

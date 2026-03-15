@@ -4,8 +4,8 @@ This repository lets you define reusable mod groups and compose multiple Modrint
 
 ## Layout
 
-- `modpacks.nix`: maps group names to local packwiz project directories and defines composed modpacks.
-- `groups/<name>/`: standalone packwiz projects you can edit directly with `packwiz`.
+- `modpacks.nix`: defines composed modpacks and selects groups from the auto-discovered `groups` attrset.
+- `groups/<loader>/<name>/`: standalone packwiz projects you can edit directly with `packwiz` (for example `groups/neoforge/worldgen`).
 - `lib/mk-packwiz-modpack.nix`: turns one modpack definition into a complete packwiz tree (`pack.toml`, `index.toml`, and `mods/*.pw.toml`).
 - `flake.nix`: exposes each modpack as a build target under `packages.<system>.<name>`.
 
@@ -16,7 +16,7 @@ Each group is a normal packwiz project, so you can work in that folder and run p
 Example:
 
 ```bash
-cd groups/base
+cd groups/neoforge/worldgen
 packwiz modrinth add sodium
 ```
 
@@ -25,8 +25,8 @@ packwiz modrinth add sodium
 Edit `modpacks.nix`:
 
 1. `flake.nix` auto-discovers group directories under `./groups` and passes them to `modpacks.nix` as `groups`.
-1. Define each concrete modpack under `modpacks` by selecting group paths (for example `groups.base`, `groups.terrain`).
-1. `groups` entries may be nested lists, so you can build reusable bundles (for example `let shared.base = [ groups.optimization groups.utility ]; in [ shared.base groups.create ]`).
+1. Define each concrete modpack under `modpacks` by selecting group paths (for example `groups.fabric.worldgen`, `groups.neoforge.utilities`).
+1. `groups` entries may be nested lists, so you can build reusable bundles (for example `let shared = [ groups.neoforge.optimization groups.neoforge.utilities ]; in [ shared groups.neoforge.create ]`).
 1. Optionally add one-off `extraMods` inline.
 
 The merge is strict and fails early with explicit explanations if:

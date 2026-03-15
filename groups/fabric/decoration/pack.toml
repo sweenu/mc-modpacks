@@ -1,0 +1,12 @@
+name = "Decoration"
+version = "1.0.0"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "b23198cb6f9046143724bf108967fcf62282648967af96fbef94d20fe2c22f4f"
+
+[versions]
+fabric = "0.18.4"
+minecraft = "1.20.1"
