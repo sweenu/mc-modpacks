@@ -126,24 +126,16 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
 
-      - name: Build packwiz tree
+      - name: Build .mrpack
         id: build
         run: |
           out_path="$(nix build --print-out-paths .#${{ matrix.modpack }})"
           echo "out_path=$out_path" >> "$GITHUB_OUTPUT"
 
-      - name: Export .mrpack
+      - name: Stage .mrpack artifact
         run: |
           mkdir -p dist
-          tmp_dir="$(mktemp -d)"
-
-          cp -r "${{ steps.build.outputs.out_path }}" "$tmp_dir/${{ matrix.modpack }}"
-          chmod -R u+w "$tmp_dir/${{ matrix.modpack }}"
-
-          (
-            cd "$tmp_dir/${{ matrix.modpack }}"
-            nix shell nixpkgs#packwiz -c packwiz mr export -o "$GITHUB_WORKSPACE/dist/${{ matrix.modpack }}.mrpack"
-          )
+          cp "${{ steps.build.outputs.out_path }}" "dist/${{ matrix.modpack }}.mrpack"
 
       - name: Upload .mrpack artifact
         uses: actions/upload-artifact@v4
