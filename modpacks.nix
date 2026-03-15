@@ -4,7 +4,7 @@
     creabblemon = {
       name = "Creabblemon";
       author = "sweenu";
-      version = "26.03.150750";
+      version = "26.03.151842";
 
       minecraftVersion = "1.21.1";
       loader = "neoforge";
@@ -22,7 +22,7 @@
     creabblemon-fabric = {
       name = "Creabblemon-fabric";
       author = "sweenu";
-      version = "26.03.142259";
+      version = "26.03.151842";
 
       minecraftVersion = "1.20.1";
       loader = "fabric";
