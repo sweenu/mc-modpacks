@@ -16,11 +16,6 @@ hash = "c6d69011793e9278c65ba14423fccdbc2421f62676bad2663ba85ad9c386ae28"
 metafile = true
 
 [[files]]
-file = "mods/fancymenu.pw.toml"
-hash = "2d7e927b0efdc5e79a50505151975605b355d14d7da2a475aa8a767697911651"
-metafile = true
-
-[[files]]
 file = "mods/inventory-profiles-next.pw.toml"
 hash = "e49094bd8ff62930cefd9d80ac4e73976102441fcfcdbe78195751d261d7eea2"
 metafile = true
