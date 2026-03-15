@@ -132,16 +132,25 @@ jobs:
           out_path="$(nix build --print-out-paths .#${{ matrix.modpack }})"
           echo "out_path=$out_path" >> "$GITHUB_OUTPUT"
 
-      - name: Stage .mrpack artifact
+      - name: Build packwiz files output
+        id: build-packwiz
+        run: |
+          packwiz_path="$(nix build --print-out-paths .#${{ matrix.modpack }}^packwiz)"
+          echo "packwiz_path=$packwiz_path" >> "$GITHUB_OUTPUT"
+
+      - name: Stage release artifacts
         run: |
           mkdir -p dist
           cp "${{ steps.build.outputs.out_path }}" "dist/${{ matrix.modpack }}.mrpack"
+          cp "${{ steps.build-packwiz.outputs.packwiz_path }}/pack.toml" "dist/${{ matrix.modpack }}.pack.toml"
 
-      - name: Upload .mrpack artifact
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mrpack-${{ matrix.modpack }}
-          path: dist/${{ matrix.modpack }}.mrpack
+          path: |
+            dist/${{ matrix.modpack }}.mrpack
+            dist/${{ matrix.modpack }}.pack.toml
           if-no-files-found: error
 
   publish-release:
@@ -152,16 +161,18 @@ jobs:
       - build-mrpack
     if: needs.prepare-release.outputs.should_release == 'true'
     steps:
-      - name: Download .mrpack artifacts
+      - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: mrpack-*
           path: dist
           merge-multiple: true
 
-      - name: Publish tag release with .mrpack assets
+      - name: Publish tag release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.release_tag }}
           generate_release_notes: true
-          files: dist/*.mrpack
+          files: |
+            dist/*.mrpack
+            dist/*.pack.toml

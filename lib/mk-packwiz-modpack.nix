@@ -330,6 +330,8 @@ let
 
   deduplicatedMods = builtins.attrValues mergeState.byIdentity;
 
+  sortedMods = lib.sort (a: b: mkModFileName a < mkModFileName b) deduplicatedMods;
+
   mkModFileName =
     mod:
     if mod ? pwFile then
@@ -364,6 +366,60 @@ let
         };
       }
     );
+
+  packwizModEntries = map (
+    mod:
+    let
+      fileName = mkModFileName mod;
+      toml = mkModToml mod;
+    in
+    {
+      inherit fileName;
+      hash = builtins.hashString "sha256" toml;
+      sourcePath = pkgs.writeText "${modpackName}-${fileName}" toml;
+    }
+  ) sortedMods;
+
+  packwizIndexToml = renderToml "${modpackName}-index.toml" {
+    "hash-format" = "sha256";
+    files = map (
+      mod:
+      {
+        file = "mods/${mod.fileName}";
+        hash = mod.hash;
+        metafile = true;
+      }
+    ) packwizModEntries;
+  };
+
+  packwizPackToml = renderToml "${modpackName}-pack.toml" (
+    {
+      name = cfg.name;
+      version = cfg.version;
+      "pack-format" = "packwiz:1.1.0";
+
+      index = {
+        file = "index.toml";
+        "hash-format" = "sha256";
+        hash = builtins.hashString "sha256" packwizIndexToml;
+      };
+
+      versions = {
+        minecraft = cfg.minecraftVersion;
+        "${cfg.loader}" = cfg.loaderVersion;
+      };
+    }
+    // lib.optionalAttrs (cfg ? author) {
+      author = cfg.author;
+    }
+  );
+
+  packwizIndexTomlPath = pkgs.writeText "${modpackName}-index.toml" packwizIndexToml;
+  packwizPackTomlPath = pkgs.writeText "${modpackName}-pack.toml" packwizPackToml;
+
+  copyPackwizModsScript = lib.concatMapStringsSep "\n" (
+    mod: "cp ${mod.sourcePath} \"$packwiz/mods/${mod.fileName}\""
+  ) packwizModEntries;
 
   loaderDependencyKey =
     {
@@ -419,13 +475,18 @@ let
 in
 builtins.deepSeq requiredChecks (pkgs.runCommand "modpack-${modpackName}.mrpack" {
   nativeBuildInputs = [ pkgs.zip ];
+  outputs = [ "out" "packwiz" ];
 } (
   builtins.deepSeq mergeConflictCheck
   ''
     buildDir="$(mktemp -d)"
     mkdir -p "$buildDir/overrides"
+    mkdir -p "$packwiz/mods"
 
     cp ${modrinthIndexPath} "$buildDir/modrinth.index.json"
+    cp ${packwizPackTomlPath} "$packwiz/pack.toml"
+    cp ${packwizIndexTomlPath} "$packwiz/index.toml"
+    ${copyPackwizModsScript}
 
     # Keep archive metadata stable between builds.
     touch -t 198001010000 "$buildDir/modrinth.index.json" "$buildDir/overrides"
