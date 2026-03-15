@@ -4,7 +4,7 @@
     creabblemon = {
       name = "Creabblemon";
       author = "sweenu";
-      version = "26.03.142259";
+      version = "26.03.150750";
 
       minecraftVersion = "1.21.1";
       loader = "neoforge";
